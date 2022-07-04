@@ -1,5 +1,5 @@
 import argparse, logging, os, shutil
-from filecoin_packer.pack import Bin, PackConfig 
+from filecoin_packer.pack import Bin, PackConfig
 from filecoin_packer.pack import bin_source_directory, pack_staging_to_car
 from filecoin_packer.pack import unpack_car_to_staging, join_large_files, decrypt_staging_files, combine_files_to_output
 from multiprocessing import Pool, TimeoutError
@@ -13,7 +13,7 @@ JOB_CONCURRENCY_DEFAULT=1
 
 
 def init_argparse() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog='PROG', 
+    parser = argparse.ArgumentParser(prog='PROG',
         description='Filecoin filesystem packager/unpackager',
         usage='python packer.py [--pack|--unpack] [-s SOURCE_PATH] [-t TEMP_PATH] [-o OUTPUT_PATH] [-b BIN_SIZE] [-k ENCRYPTION_KEY]',
         epilog="Alpha version.")
@@ -24,7 +24,7 @@ def init_argparse() -> argparse.ArgumentParser:
     # TODO, staging storage space requires >1x source data size. TODO: Implent CAR-by-CAR micro-batching to reduce staging space requirements.
     parser.add_argument('-t', '--tmp', required=True, help='Path to temporary staging directory. Currently, required temp size > 1x of source data size.')
     parser.add_argument('-o', '--output', required=True, help='Path to write output of packaged or unpackaged content.')
-    parser.add_argument('-k', '--key', required=True, help='RSA Cryptographic Key or Certificate')
+    parser.add_argument('-k', '--key', required=False, help='RSA Cryptographic Key or Certificate')
     parser.add_argument('-b', '--binsize', required=False, default=BIN_SIZE_DEFAULT, type=int, help='[optional] Bin size bytes (default: {})'.format(BIN_SIZE_DEFAULT))
     parser.add_argument('-m', '--filemaxsize', required=False, default=FILE_MAX_SIZE_DEFAULT, type=int, help='[optional] File max size bytes (default: {})'.format(FILE_MAX_SIZE_DEFAULT))
     parser.add_argument('-j', '--jobs', required=False, default=JOB_CONCURRENCY_DEFAULT, type=int, help='[optional] Job concurrency suggestion (default: {})'.format(JOB_CONCURRENCY_DEFAULT))
@@ -59,7 +59,7 @@ def main() -> None:
             logging.debug("## next bin")
             job_bin_size = 0
             job_to_paths_list.append([])
-        job_bin_size += child_size 
+        job_bin_size += child_size
         job_to_paths_list[-1].append(child_path.path)
         logging.debug("##  job bin size: {}".format(job_bin_size))
         logging.debug("##  job_to_paths_list: {}".format(job_to_paths_list))
@@ -76,7 +76,7 @@ def main() -> None:
         elif parsed_args.unpack:
             mode = PackConfig.MODE_UNPACK
         else:
-            raise Exception("Pack or Unpack parameter required.") 
+            raise Exception("Pack or Unpack parameter required.")
         zero_padding_digits = len(str(len(job_to_paths_list)))
         job_path_suffix = "JOB.{}".format(str(job_index).zfill(zero_padding_digits))
         job_staging = os.path.join(os.path.normpath(parsed_args.tmp), job_path_suffix) # subdir per-job
@@ -114,7 +114,7 @@ def pack(config, paths_list) -> None:
         for child_path in paths_list:
             bin_source_directory(child_path, config, bin_list)
 
-        # cleanup. 
+        # cleanup.
         logging.debug("cleaning up encryption temp dir: {}".format(os.path.join(config.staging_base_path, config.STAGING_ENCRYPTION_SUBDIR)))
         shutil.rmtree(os.path.join(config.staging_base_path, config.STAGING_ENCRYPTION_SUBDIR), ignore_errors=True)
 

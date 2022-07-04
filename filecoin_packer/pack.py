@@ -67,7 +67,7 @@ class Bin:
 
 def bin_source_directory(path, config, bin_list) -> None:
     """
-    Traverse the specified path, 
+    Traverse the specified path,
     copy files into maximum-sized bins of subdirectories under the config staging path.
     Features:
     * Large file splitting.
@@ -95,7 +95,7 @@ def bin_source_directory(path, config, bin_list) -> None:
 
             file_size = entry.stat().st_size
 
-            # 1. Split large files, process each of the pieces. 
+            # 1. Split large files, process each of the pieces.
             if file_size > config.file_max_bytes:
                 pack_large_file_to_staging(entry.path, config, bin_list)
                 continue
@@ -103,10 +103,13 @@ def bin_source_directory(path, config, bin_list) -> None:
             file_to_pack = entry.path
             relpath = os.path.relpath(file_to_pack, config.source_path)
 
-            # 2. Encrypt file. TODO conditional encryption based on switch (existence of config.key_path parameter)
-            encrypted_file_path = os.path.join(config.staging_base_path, config.STAGING_ENCRYPTION_SUBDIR, relpath + config.ENCRYPTED_FILE_SUFFIX)
-            os.makedirs(os.path.dirname(encrypted_file_path), exist_ok=TRUE)
-            encrypted_file_path = encrypt(entry.path, encrypted_file_path, config)
+            # 2. Encrypt file if key specified, otherwise skip
+            if config.key_path is not None:
+                encrypted_file_path = os.path.join(config.staging_base_path, config.STAGING_ENCRYPTION_SUBDIR, relpath + config.ENCRYPTED_FILE_SUFFIX)
+                os.makedirs(os.path.dirname(encrypted_file_path), exist_ok=TRUE)
+                encrypted_file_path = encrypt(entry.path, encrypted_file_path, config)
+            else:
+                encrypted_file_path = None # this is used as a flag further down
 
             if not encrypted_file_path is None:
                 file_size = os.path.getsize(encrypted_file_path)
@@ -149,7 +152,7 @@ def pack_large_file_to_staging(filepath, config, bin_list) -> None:
     cur_bin = bin_list[-1]
     file_number = 1
     num_chunks = ceil(os.path.getsize(filepath) / config.file_max_bytes)
-    chunk_length_digits = len(str(ceil(num_chunks))) 
+    chunk_length_digits = len(str(ceil(num_chunks)))
     logging.info("splitting large file: {} , into number of chunks: {}".format(filepath, num_chunks))
 
     with open(filepath, mode='rb') as orig:
@@ -169,7 +172,7 @@ def pack_large_file_to_staging(filepath, config, bin_list) -> None:
             os.makedirs(os.path.dirname(staging_chunkname), exist_ok=TRUE)
             logging.debug("# writing chunk to: {}".format(staging_chunkname))
             with open(staging_chunkname, "ab") as staging_file:
-                while (chunk_fragment) and (chunk_write_bytes <= config.file_max_bytes): 
+                while (chunk_fragment) and (chunk_write_bytes <= config.file_max_bytes):
                     chunk_write_bytes += staging_file.write(chunk_fragment)
                     chunk_fragment = orig.read(FILE_READ_BUFFER_SIZE)
                 # End of Chunk.
@@ -198,7 +201,7 @@ def pack_large_file_to_staging(filepath, config, bin_list) -> None:
 
 def pack_staging_to_car(config) -> None:
     """
-    Processes the specified staging path, 
+    Processes the specified staging path,
     copying files into maximum-sized bins of subdirectories within the destination path.
     """
     logging.debug("# pack_staging_to_car(): path:{}".format(config.staging_base_path))
@@ -251,7 +254,7 @@ def unpack_car_to_staging(config, path) -> None:
     os.makedirs(staging_dir_path, exist_ok=TRUE)
 
     for car_file_path in children:
-        ipfs_car_cmd = "ipfs-car --unpack {} --output {}".format(car_file_path, staging_dir_path) 
+        ipfs_car_cmd = "ipfs-car --unpack {} --output {}".format(car_file_path, staging_dir_path)
         logging.debug("# Unpack CAR executing: {}".format(ipfs_car_cmd))
         try:
             cmd_out = check_output(ipfs_car_cmd, stderr=STDOUT, shell=True)
@@ -261,7 +264,7 @@ def unpack_car_to_staging(config, path) -> None:
     # Move all staging CAR subdirs into the same root dir.
     staging_dir = os.path.abspath(os.path.normpath(config.staging_base_path))
     CAR_SUBDIR_CONTENT_PATTERN = staging_dir + "/CAR[0-9]*/"
-    car_content_paths = sorted(glob.glob(CAR_SUBDIR_CONTENT_PATTERN, recursive=False)) 
+    car_content_paths = sorted(glob.glob(CAR_SUBDIR_CONTENT_PATTERN, recursive=False))
     os.makedirs(config.staging_consolidation_path, exist_ok=TRUE)
 
     for bin_dir in car_content_paths:
